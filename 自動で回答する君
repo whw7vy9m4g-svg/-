@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="PDF解答" />
+  <title>PDF解答アシスタント v2.3</title>
+  <style>
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #0f172a;
+      color: #f8fafc;
+      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    header {
+      background-color: #1e293b;
+      padding: calc(10px + env(safe-area-inset-top)) 14px 10px;
+      border-bottom: 1px solid #334155;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .title {
+      font-weight: bold;
+      color: #38bdf8;
+      font-size: 15px;
+    }
+    .header-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .btn {
+      border: none;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 13px;
+      padding: 8px 12px;
+      cursor: pointer;
+      user-select: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .btn:active { opacity: 0.75; }
+    .btn-primary { background-color: #0284c7; color: #ffffff; }
+    .btn-secondary { background-color: #334155; color: #e2e8f0; }
+    .btn-success { background-color: #10b981; color: #0f172a; }
+    .btn-sm { padding: 6px 10px; font-size: 12px; }
+
+    #key-box {
+      display: none;
+      padding: 10px 14px;
+      background-color: #172033;
+      border-bottom: 1px solid #334155;
+      gap: 8px;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    #key-box.open { display: flex; }
+    input[type="text"] {
+      background-color: #0f172a;
+      color: #f8fafc;
+      border: 1px solid #475569;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 14px;
+      outline: none;
+    }
+    input[type="text"]:focus { border-color: #38bdf8; }
+    #key-input { flex: 1; min-width: 0; }
+
+    .sub-bar {
+      padding: 8px 14px;
+      background-color: #162032;
+      border-bottom: 1px solid #1e293b;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+      font-size: 12px;
+      color: #94a3b8;
+    }
+    #file-label {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      flex: 1;
+    }
+    .search-group {
+      display: flex;
+      gap: 5px;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    #num-input {
+      width: 78px;
+      padding: 6px 8px;
+      font-size: 13px;
+      text-align: center;
+    }
+
+    #nav-bar {
+      display: none;
+      padding: 8px 14px;
+      background-color: #1e293b;
+      border-bottom: 1px solid #334155;
+      gap: 6px;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    #nav-bar.open { display: flex; }
+    #chips-container {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      flex: 1;
+      padding: 2px 0;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    #chips-container::-webkit-scrollbar { display: none; }
+    .chip {
+      padding: 6px 11px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: bold;
+      white-space: nowrap;
+      flex-shrink: 0;
+      background-color: #334155;
+      color: #f8fafc;
+      cursor: pointer;
+      user-select: none;
+    }
+    .chip.active { background-color: #0284c7; }
+
+    main {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 14px 14px calc(20px + env(safe-area-inset-bottom));
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .card {
+      background-color: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 14px;
+      line-height: 1.65;
+      font-size: 14px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .q-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: #94a3b8;
+      margin-bottom: 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #334155;
+    }
+    .q-num-badge {
+      font-size: 15px;
+      font-weight: bold;
+      color: #38bdf8;
+    }
+    .answer-box {
+      background-color: #0f172a;
+      border-left: 4px solid #10b981;
+      padding: 10px 12px;
+      border-radius: 6px;
+      margin-bottom: 12px;
+      font-size: 16px;
+      font-weight: bold;
+      color: #f8fafc;
+    }
+    .answer-label {
+      font-size: 11px;
+      color: #10b981;
+      display: block;
+      margin-bottom: 2px;
+    }
+    .exp-label {
+      font-size: 12px;
+      font-weight: bold;
+      color: #94a3b8;
+      margin-bottom: 4px;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <span class="title">PDF解答アシスタント v2.3</span>
+    <div class="header-actions">
+      <label for="pdf-input" class="btn btn-primary">PDF選択</label>
+      <button type="button" id="toggle-mode-btn" class="btn btn-secondary" style="display:none;">一覧表示</button>
+      <button type="button" id="key-btn" class="btn btn-secondary">APIキー</button>
+    </div>
+  </header>
+
+  <input type="file" id="pdf-input" accept=".pdf,application/pdf" hidden />
+
+  <div id="key-box">
+    <input type="text" id="key-input" placeholder="Gemini APIキー (AIza...)" autocomplete="off" />
+    <button type="button" id="key-save-btn" class="btn btn-success">保存</button>
+  </div>
+
+  <div class="sub-bar">
+    <span id="file-label">PDF未選択</span>
+    <div class="search-group">
+      <input type="text" id="num-input" placeholder="番号(例:3)" />
+      <button type="button" id="ask-num-btn" class="btn btn-secondary btn-sm">指定解析</button>
+    </div>
+  </div>
+
+  <div id="nav-bar">
+    <button type="button" id="prev-btn" class="btn btn-secondary btn-sm">◀ 前</button>
+    <div id="chips-container"></div>
+    <button type="button" id="next-btn" class="btn btn-secondary btn-sm">次 ▶</button>
+  </div>
+
+  <main id="main-area">
+    <div class="card" id="status-card">1. 右上の「APIキー」からGemini APIキーを保存
+2.「PDF選択」から問題PDFを読み込むと、問題番号ごとの正答と解説を表示します。</div>
+  </main>
+
+  <script>
+    const STATE = {
+      pdfBase64: '',
+      pdfName: '',
+      questions: [],
+      currentIndex: 0,
+      listMode: false,
+      modelCandidates: [],
+      activeModel: ''
+    };
+
+    const STORAGE_KEY = 'CLARK_GEMINI_API_KEY';
+
+    function saveKey(val) {
+      const cleaned = (val || '').replace(/\s+/g, '');
+      try { localStorage.setItem(STORAGE_KEY, cleaned); } catch (e) {}
+    }
+
+    function loadKey() {
+      try { return (localStorage.getItem(STORAGE_KEY) || '').replace(/\s+/g, ''); } catch (e) { return ''; }
+    }
+
+    function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    function cleanJsonText(str) {
+      return str.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+    }
+
+    function escapeHtml(str) {
+      return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function showMessage(text) {
+      const main = document.getElementById('main-area');
+      main.innerHTML = `<div class="card">${escapeHtml(text)}</div>`;
+    }
+
+    // ==========================================
+    // 利用可能モデルの優先度順取得
+    // ==========================================
+    async function getModelCandidates(apiKey) {
+      if (STATE.modelCandidates.length > 0) return STATE.modelCandidates;
+
+      const listUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`;
+      const res = await fetch(listUrl);
+      const text = await res.text();
+
+      if (!res.ok) {
+        throw new Error(`モデル一覧取得エラー (${res.status}):\n${text}`);
+      }
+
+      const data = JSON.parse(text);
+      const models = Array.isArray(data.models) ? data.models : [];
+
+      const valid = models.filter(m => {
+        const name = (m.name || '').toLowerCase();
+        const methods = m.supportedGenerationMethods || [];
+        if (!methods.includes('generateContent')) return false;
+        if (!name.includes('gemini')) return false;
+        if (name.includes('embedding') || name.includes('tts') || name.includes('image') || name.includes('audio') || name.includes('robotics')) {
+          return false;
+        }
+        return true;
+      });
+
+      if (valid.length === 0) {
+        throw new Error('このAPIキーで利用可能なGeminiモデルが見つかりませんでした。');
+      }
+
+      valid.sort((a, b) => {
+        const getTier = (name) => {
+          const n = name.toLowerCase();
+          if (n.includes('flash') && !n.includes('lite')) return 3;
+          if (n.includes('flash')) return 2;
+          if (n.includes('pro')) return 1;
+          return 0;
+        };
+        const tierDiff = getTier(b.name) - getTier(a.name);
+        if (tierDiff !== 0) return tierDiff;
+        return b.name.localeCompare(a.name, undefined, { numeric: true });
+      });
+
+      STATE.modelCandidates = valid.slice(0, 4).map(m => m.name);
+      return STATE.modelCandidates;
+    }
+
+    // ==========================================
+    // 503混雑自動リトライ＆予備モデル切り替え
+    // ==========================================
+    async function callGeminiWithPdf(promptText, useJson, onStatusUpdate) {
+      const apiKey = loadKey();
+      if (!apiKey) throw new Error('APIキーが設定されていません。右上の「APIキー」から保存してください。');
+      if (!STATE.pdfBase64) throw new Error('PDFファイルが読み込まれていません。「PDF選択」から読み込んでください。');
+
+      const candidates = await getModelCandidates(apiKey);
+      const bodyObj = {
+        contents: [{
+          parts: [
+            {
+              inlineData: {
+                mimeType: 'application/pdf',
+                data: STATE.pdfBase64
+              }
+            },
+            { text: promptText }
+          ]
+        }]
+      };
+
+      if (useJson) {
+        bodyObj.generationConfig = { responseMimeType: 'application/json' };
+      }
+
+      let lastErrorMsg = '';
+
+      for (let mIdx = 0; mIdx < candidates.length; mIdx++) {
+        const modelName = candidates[mIdx];
+        const shortName = modelName.replace('models/', '');
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/${modelName}:generateContent?key=${encodeURIComponent(apiKey)}`;
+
+        for (let attempt = 1; attempt <= 2; attempt++) {
+          if (onStatusUpdate) {
+            onStatusUpdate(
+              mIdx === 0 && attempt === 1
+                ? `「${shortName}」で解析中...`
+                : `「${shortName}」で再試行中 (${attempt}回目)...`
+            );
+          }
+
+          let res, text;
+          try {
+            res = await fetch(endpoint, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(bodyObj)
+            });
+            text = await res.text();
+          } catch (netErr) {
+            throw new Error('通信エラーが発生しました。インターネット接続を確認してください。');
+          }
+
+          if (res.ok) {
+            STATE.activeModel = shortName;
+            return text;
+          }
+
+          lastErrorMsg = `APIエラー (${res.status}) [${shortName}]:\n${text}`;
+          const isTemporary = [429, 500, 502, 503, 504].includes(res.status);
+          if (!isTemporary) {
+            throw new Error(lastErrorMsg);
+          }
+
+          if (attempt === 1) {
+            if (onStatusUpdate) onStatusUpdate(`サーバー混雑(${res.status})のため2.5秒後に自動再試行します...`);
+            await sleep(2500);
+          } else if (mIdx + 1 < candidates.length) {
+            const nextShort = candidates[mIdx + 1].replace('models/', '');
+            if (onStatusUpdate) onStatusUpdate(`「${shortName}」が混雑中のため、予備モデル「${nextShort}」へ切り替えます...`);
+            await sleep(800);
+          }
+        }
+      }
+
+      throw new Error(`すべての利用可能モデルが混雑しているため完了できませんでした。数秒おいて再度お試しください。\n\n詳細:\n${lastErrorMsg}`);
+    }
+
+    // ==========================================
+    // PDF読み込み・解析処理
+    // ==========================================
+    function handlePdfFile(file) {
+      if (file.size > 18 * 1024 * 1024) {
+        showMessage('ファイルサイズが大きすぎます（18MB以下のPDFを選択してください）。');
+        return;
+      }
+
+      const fileLabel = document.getElementById('file-label');
+      fileLabel.textContent = `読込中: ${file.name}`;
+      showMessage(`「${file.name}」を読み込んでいます...`);
+
+      const reader = new FileReader();
+      reader.onload = function() {
+        STATE.pdfBase64 = reader.result.split(',')[1];
+        STATE.pdfName = file.name;
+        fileLabel.textContent = `📄 ${file.name}`;
+
+        if (!loadKey()) {
+          showMessage('PDFを読み込みました。右上の「APIキー」からキーを保存すると自動で解析を開始します。');
+          document.getElementById('key-box').classList.add('open');
+          return;
+        }
+        analyzeAllQuestions();
+      };
+      reader.onerror = function() {
+        showMessage('PDFファイルの読み込みに失敗しました。');
+      };
+      reader.readAsDataURL(file);
+    }
+
+    async function analyzeAllQuestions() {
+      document.getElementById('nav-bar').classList.remove('open');
+      document.getElementById('toggle-mode-btn').style.display = 'none';
+
+      const promptText = `添付された高校の課題PDFファイルを読み取り、含まれるすべての設問（大問・小問の枝番まで1つも省略せずすべて）について、問題番号ごとの正答と簡潔な解説を作成してください。
+必ず以下のJSON形式のみで出力してください。
+
+{
+  "questions": [
+    {
+      "number": "問1",
+      "answer": "選択肢の記号や語句（例: ア / 正解の語句）",
+      "explanation": "なぜそれが正解になるかの簡潔な解説"
+    }
+  ]
+}`;
+
+      try {
+        const rawResponse = await callGeminiWithPdf(promptText, true, (status) => {
+          showMessage(`PDF全問一括解析: ${status}`);
+        });
+        const parsed = JSON.parse(rawResponse);
+        const rawText = parsed.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        const jsonObj = JSON.parse(cleanJsonText(rawText));
+
+        if (jsonObj && Array.isArray(jsonObj.questions) && jsonObj.questions.length > 0) {
+          STATE.questions = jsonObj.questions;
+          STATE.listMode = false;
+          document.getElementById('toggle-mode-btn').style.display = 'inline-flex';
+          document.getElementById('toggle-mode-btn').textContent = '一覧表示';
+          buildChips();
+          renderCurrentView(0);
+        } else {
+          showMessage('設問リストを抽出できませんでした。上の入力欄に問題番号を入れて「指定解析」を押してください。');
+        }
+      } catch (err) {
+        showMessage(err.message);
+      }
+    }
+
+    async function analyzeSingleQuestion(qNum) {
+      const promptText = `添付されたPDFファイルの中から、問題番号「${qNum}」に該当する設問を見つけ、以下のJSON形式のみで出力してください。
+{
+  "number": "${qNum}",
+  "answer": "選択肢の記号や具体的な解答",
+  "explanation": "根拠の簡潔な説明"
+}`;
+
+      try {
+        const rawResponse = await callGeminiWithPdf(promptText, true, (status) => {
+          showMessage(`「${qNum}」の指定解析: ${status}`);
+        });
+        const parsed = JSON.parse(rawResponse);
+        const rawText = parsed.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        const item = JSON.parse(cleanJsonText(rawText));
+
+        if (item && item.answer) {
+          STATE.questions.push({
+            number: item.number || qNum,
+            answer: item.answer,
+            explanation: item.explanation || ''
+          });
+          STATE.listMode = false;
+          document.getElementById('toggle-mode-btn').style.display = 'inline-flex';
+          document.getElementById('toggle-mode-btn').textContent = '一覧表示';
+          buildChips();
+          renderCurrentView(STATE.questions.length - 1);
+        } else {
+          showMessage('回答を取得できませんでした。');
+        }
+      } catch (err) {
+        showMessage(err.message);
+      }
+    }
+
+    // ==========================================
+    // 画面描画（1問表示 / 全問一覧表示）
+    // ==========================================
+    function buildChips() {
+      const navBar = document.getElementById('nav-bar');
+      const container = document.getElementById('chips-container');
+      container.innerHTML = '';
+
+      STATE.questions.forEach((q, idx) => {
+        const chip = document.createElement('div');
+        chip.className = 'chip' + (idx === STATE.currentIndex ? ' active' : '');
+        chip.textContent = q.number || `問${idx + 1}`;
+        chip.addEventListener('click', () => {
+          STATE.listMode = false;
+          document.getElementById('toggle-mode-btn').textContent = '一覧表示';
+          renderCurrentView(idx);
+        });
+        container.appendChild(chip);
+      });
+
+      navBar.classList.add('open');
+    }
+
+    function createQuestionCardHtml(q, idx) {
+      return `
+        <div class="card">
+          <div class="q-meta">
+            <span class="q-num-badge">${escapeHtml(q.number)}</span>
+            <span>${idx + 1} / ${STATE.questions.length}問 ・ ${escapeHtml(STATE.activeModel)}</span>
+          </div>
+          <div class="answer-box">
+            <span class="answer-label">正答候補</span>
+            ${escapeHtml(q.answer)}
+          </div>
+          <div class="exp-label">解説</div>
+          <div>${escapeHtml(q.explanation)}</div>
+        </div>
+      `;
+    }
+
+    function renderCurrentView(index) {
+      if (STATE.questions.length === 0) return;
+      if (typeof index === 'number') STATE.currentIndex = index;
+
+      const main = document.getElementById('main-area');
+      const chips = document.getElementById('chips-container').children;
+
+      Array.from(chips).forEach((chip, i) => {
+        if (!STATE.listMode && i === STATE.currentIndex) {
+          chip.classList.add('active');
+          chip.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+        } else {
+          chip.classList.remove('active');
+        }
+      });
+
+      if (STATE.listMode) {
+        main.innerHTML = STATE.questions.map((q, i) => createQuestionCardHtml(q, i)).join('');
+        main.scrollTop = 0;
+      } else {
+        const q = STATE.questions[STATE.currentIndex];
+        main.innerHTML = createQuestionCardHtml(q, STATE.currentIndex);
+        main.scrollTop = 0;
+      }
+    }
+
+    // ==========================================
+    // イベント登録
+    // ==========================================
+    document.getElementById('pdf-input').addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (file) handlePdfFile(file);
+      e.target.value = '';
+    });
+
+    document.getElementById('key-btn').addEventListener('click', () => {
+      const keyBox = document.getElementById('key-box');
+      if (!keyBox.classList.contains('open')) {
+        document.getElementById('key-input').value = loadKey();
+        keyBox.classList.add('open');
+      } else {
+        keyBox.classList.remove('open');
+      }
+    });
+
+    document.getElementById('key-save-btn').addEventListener('click', () => {
+      const val = document.getElementById('key-input').value.trim();
+      saveKey(val);
+      STATE.modelCandidates = [];
+      STATE.activeModel = '';
+      document.getElementById('key-box').classList.remove('open');
+
+      if (!val) {
+        showMessage('APIキーをクリアしました。');
+      } else if (STATE.pdfBase64 && STATE.questions.length === 0) {
+        analyzeAllQuestions();
+      } else {
+        showMessage('APIキーを保存しました。「PDF選択」から問題PDFを読み込んでください。');
+      }
+    });
+
+    document.getElementById('toggle-mode-btn').addEventListener('click', () => {
+      STATE.listMode = !STATE.listMode;
+      document.getElementById('toggle-mode-btn').textContent = STATE.listMode ? '1問表示' : '一覧表示';
+      renderCurrentView();
+    });
+
+    document.getElementById('prev-btn').addEventListener('click', () => {
+      if (STATE.questions.length === 0) return;
+      STATE.listMode = false;
+      document.getElementById('toggle-mode-btn').textContent = '一覧表示';
+      const prev = (STATE.currentIndex - 1 + STATE.questions.length) % STATE.questions.length;
+      renderCurrentView(prev);
+    });
+
+    document.getElementById('next-btn').addEventListener('click', () => {
+      if (STATE.questions.length === 0) return;
+      STATE.listMode = false;
+      document.getElementById('toggle-mode-btn').textContent = '一覧表示';
+      const next = (STATE.currentIndex + 1) % STATE.questions.length;
+      renderCurrentView(next);
+    });
+
+    document.getElementById('ask-num-btn').addEventListener('click', () => {
+      const qNum = document.getElementById('num-input').value.trim();
+      if (!qNum) {
+        showMessage('右上の入力欄に問題番号（例: 1, 問2, 3-1）を入力してください。');
+        return;
+      }
+      const normalized = qNum.replace(/^問/, '');
+      const foundIdx = STATE.questions.findIndex(q =>
+        q.number === qNum || q.number.replace(/^問/, '') === normalized
+      );
+      if (foundIdx !== -1) {
+        STATE.listMode = false;
+        document.getElementById('toggle-mode-btn').textContent = '一覧表示';
+        renderCurrentView(foundIdx);
+        return;
+      }
+      analyzeSingleQuestion(qNum);
+    });
+  </script>
+</body>
+</html>
